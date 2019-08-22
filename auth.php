@@ -144,18 +144,19 @@ class auth_plugin_collabcosso extends auth_plugin_base {
             redirect($url);
         }
         
-        $dbits = explode("-",$time);
-        
-        $timestamp = strtotime(sprintf("%s-%s-%s %s:%s:%s", $dbits[2],$dbits[1],$dbits[0],$dbits[3],$dbits[4],$dbits[5]));
+        $timeCorrectFormat = DateTime::createFromFormat('d-m-Y-H-i-s', $time);
+        $timestamp = $timeCorrectFormat->getTimestamp();
 
-        $now = time();
-        
-        if ($now - $timestamp >= $CFG->local_collabcows_timedrift)
+        $timeParamString = $timeCorrectFormat->format('d-m-Y H:i:s');
+        $now = new DateTime("now", new DateTimeZone("UTC"));
+        $ssoPluginTimeString = $now->format('d-m-Y H:i:s');
+
+        if ($now->getTimestamp() - $timestamp >= $CFG->auth_collabcosso_timedrift * 60)
         {            
             \auth_collabcosso\event\collabcosso_failure::create(array(
                 'context' => context_system::instance(),
                 'other' => array(
-                    'message' => get_string('sso_failure_linkexpired', 'auth_collabcosso')
+                    'message' => 'SSO request failed because the link used has expired. Time parameter = '.$timeParamString.'; Moodle server time = '.$ssoPluginTimeString
                 )
             ))->trigger(); 
 
@@ -204,12 +205,12 @@ class auth_plugin_collabcosso extends auth_plugin_base {
             }                        
         }
 
-        \auth_collabcosso\event\collabcosso_success::create(array(
-            'context' => context_user::instance($userData->id),
-            'other' => array(
-                'message' => get_string('sso_success_complete', 'auth_collabcosso')
-            )
-        ))->trigger();
+        // \auth_collabcosso\event\collabcosso_success::create(array(
+        //     'context' => context_user::instance($userData->id),
+        //     'other' => array(
+        //         'message' => get_string('sso_success_complete', 'auth_collabcosso')
+        //     )
+        // ))->trigger();
         
         redirect($urltogo);
     }
